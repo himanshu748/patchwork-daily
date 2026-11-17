@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "..",
+    "outDir": "../node_modules/.tmp/tools",
+    "tsBuildInfoFile": "../node_modules/.tmp/tools/tsconfig.tsbuildinfo",
+    "types": ["node"]
+  },
+  "include": ["../src/shared/**/*.test.ts", "../src/shared/test/**/*.ts", "./**/*.ts", "../vitest.config.ts"],
+  "references": [{ "path": "../src/shared" }]
+}

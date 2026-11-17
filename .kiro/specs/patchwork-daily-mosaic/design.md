@@ -500,7 +500,7 @@ export type Pattern = 'solid' | 'diagonal' | 'dots' | 'cross';
 export type Hex = `#${string}`;
 export interface PaletteEntry { readonly id: PaletteId; readonly name: string; readonly light: Hex; readonly dark: Hex; readonly pattern: Pattern; }
 export declare const PALETTE: readonly [PaletteEntry, PaletteEntry, PaletteEntry, PaletteEntry];
-export interface ThemeTokens { readonly paper: Hex; readonly ink: Hex; readonly inkMuted: Hex; readonly emptyCell: Hex; readonly gridLine: Hex; readonly focus: Hex; readonly placeholder: Hex; }
+export interface ThemeTokens { readonly paper: Hex; readonly ink: Hex; readonly inkMuted: Hex; readonly emptyCell: Hex; readonly gridLine: Hex; readonly focus: Hex; readonly focusHalo: Hex; readonly placeholder: Hex; }
 export declare const THEME: { readonly light: ThemeTokens; readonly dark: ThemeTokens };
 export type ColourMode = 'light' | 'dark';
 export type CvdKind = 'protan' | 'deutan' | 'tritan';
@@ -508,23 +508,23 @@ export function relativeLuminance(hex: Hex): number;            // WCAG 2.x rela
 export function contrastRatio(a: Hex, b: Hex): number;          // (L1 + 0.05) / (L2 + 0.05)
 export function simulateCvd(hex: Hex, kind: CvdKind): Hex;      // Machado, Oliveira and Fernandes (2009) matrices, severity 1.0, applied in linear RGB
 export interface ThemeCheck { readonly ok: boolean; readonly failures: readonly string[] }
-export function checkPalette(mode: ColourMode): ThemeCheck;
-export function checkTextContrast(mode: ColourMode): ThemeCheck;
+export function checkPalette(mode: ColourMode, palette?: readonly PaletteEntry[], theme?: ThemeTokens): ThemeCheck;   // optional args let a test feed a bad palette
+export function checkTextContrast(mode: ColourMode, palette?: readonly PaletteEntry[], theme?: ThemeTokens): ThemeCheck;
 ```
 
-The Palette is one set of 4 entries. Each entry has a light-mode and a dark-mode value because the empty-Cell background differs between modes and Req 26.2 asks for 3:1 against it in both (Decision D31). `checkPalette(mode)` fails unless, for that mode: every pair of entries has a contrast ratio of at least 1.5:1 unsimulated and after each of the three `simulateCvd` kinds, and every entry has at least 3:1 against `emptyCell` (Req 26.2). `checkTextContrast(mode)` fails unless `ink` and `inkMuted` reach 4.5:1 against `paper` and `emptyCell` (Req 25.7) and `focus` reaches 3:1 against `paper`, `emptyCell` and every Palette value (Req 26.6). The four patterns differ in shape, so a greyscale render still separates the entries (Req 26.1). Concrete hex values are chosen in work step 2 and must pass both checks; this design does not fix them.
+The Palette is one set of 4 entries. Each entry has a light-mode and a dark-mode value because the empty-Cell background differs between modes and Req 26.2 asks for 3:1 against it in both (Decision D31). `checkPalette(mode)` fails unless, for that mode: every pair of entries has a contrast ratio of at least 1.5:1 unsimulated and after each of the three `simulateCvd` kinds, and every entry has at least 3:1 against `emptyCell` (Req 26.2). `checkTextContrast(mode)` fails unless `ink` and `inkMuted` reach 4.5:1 against `paper` and `emptyCell` (Req 25.7), and the two-band focus ring (`focus` inside `focusHalo`) has bands at 3:1 against each other and at least one band at 3:1 against `paper`, `emptyCell` and every Palette value (Req 26.6). The four patterns differ in shape, so a greyscale render still separates the entries (Req 26.1). The frozen values (Decision D31), found by a contrast search in step 2 and passing both checks in both modes (Property 66): Navy `#0e192f` / `#a8bde6` (solid), Rust `#ce7955` / `#a65430` (diagonal), Teal `#15473b` / `#b6f7ee` (dots), Ochre `#826026` / `#c18215` (cross).
 
 ```ts
 // src/shared/motifs.ts  (Req 3.4, Req 3.6, Req 6.6, Req 22.2)
 export type MotifFamily = 'quilt' | 'tessellation' | 'glyph';
 export type Axis = 'vertical' | 'horizontal' | 'diagonal' | 'antidiagonal';
 export type Density = 1 | 2 | 3 | 4 | 5 | 6 | 7;
-export interface MotifDef { readonly id: string; readonly family: MotifFamily; readonly axes: readonly Axis[]; }
-export declare const MOTIFS: readonly MotifDef[];
+export interface MotifDef { readonly id: string; readonly family: MotifFamily; readonly noun: string; readonly symmetry: Symmetry; readonly axes: readonly Axis[]; }
+export declare const MOTIFS: readonly MotifDef[];               // 6 quilt, 5 tessellation, 2 glyph
 export function densityFor(weekday: Weekday): Density;          // Monday 1 up to Sunday 7
 export function motifOrder(dayKey: DayKey): readonly number[];  // seeded permutation of MOTIFS indexes
-export function drawMotif(def: MotifDef, side: MosaicSide, density: Density, paper: PaletteId, prng: Prng): Uint8Array;
-export function motifName(def: MotifDef, prng: Prng): string;
+export function drawMotif(def: MotifDef, side: MosaicSide, density: Density, paper: PaletteId, prng: Prng, opts?: DrawOptions): Uint8Array;
+export function motifName(def: MotifDef, prng: Prng): string;   // "<Adjective> <Noun>" from a fixed word list
 export function isValidMotifName(name: string): boolean;        // /^[A-Za-z0-9 -]{1,40}$/, not only spaces
 export function symmetryAxes(pixels: Uint8Array, side: number): readonly Axis[];
 ```
@@ -541,11 +541,15 @@ export interface Mosaic {
   readonly paper: PaletteId; readonly motifName: string; readonly family: MotifFamily | 'ugc'; readonly source: MosaicSource;
 }
 export interface GenerateOptions { readonly seed?: number; readonly motifIndex?: number; readonly ugc?: UgcMosaicInput; }
-export interface BuiltDay { readonly mosaic: Mosaic; readonly slice: SliceOk; readonly meanDifficulty: number; }
+export interface BuiltDay { readonly mosaic: Mosaic; readonly slice: SliceOk; readonly difficultySum: number; readonly meanDifficulty: number; }
 export function generateMosaic(dayKey: string, opts?: GenerateOptions): Mosaic; // throws InvalidDayKeyError
 export function buildDay(dayKey: string, opts?: GenerateOptions): BuiltDay;     // generateMosaic plus its accepted slice
-export declare const DIFFICULTY_BANDS: Readonly<Record<Weekday, { readonly lo: number; readonly hi: number }>>;
-export declare const CANDIDATES_PER_DAY: 3;
+export function postTitle(dayNumber: number, motifName: string): string;        // "Day N · <Motif name>" (Req 7.2)
+export interface CandidateSetting { readonly coarse: boolean; readonly speckle: number; } // half-resolution drawing; speckle per mille
+export declare const CANDIDATE_SETTINGS: readonly CandidateSetting[];           // 5 settings, frozen after calibration (D29)
+export declare const CANDIDATES_PER_DAY: 5;
+export function buildCandidate(d: DayKey, seed: number, motifIndex: number, variant: number, setting: CandidateSetting): BuiltDay;
+export function previousDaySum(d: DayKey): number | null;                       // generation-0 sum of the day before, memoised
 ```
 
 `generateMosaic` and `buildDay` share one candidate search, so `buildDay(d, o).mosaic` equals `generateMosaic(d, o)` and `buildDay(d, o).slice` equals `sliceToTiles(generateMosaic(d, o), d)`. The Server stores `buildDay` output and never slices twice. `UgcMosaicInput` is `{ ugcId, creatorId, art: UgcArt }` from `ugc.ts`; it is accepted only when the Day_Key is a Sunday.
@@ -1219,7 +1223,7 @@ Command count: about 23 for a scored Stitch (4 for V2 to V7, 14 for the transact
 
 Seeding and PRNG (Req 3.2, Req 22.1, Req 22.2):
 
-- `createPrng(seedFor('pw', dayKey, seed, motifIndex, variant))`, where `seedFor` is FNV-1a 32-bit over the parts joined with `|` and the PRNG is mulberry32 (32-bit integer state, `Math.imul` only). No `Math.random`, no `Date`, no locale, no floating-point accumulation in pixel decisions.
+- `createPrng(seedFor('pw', dayKey, seed, motifIndex))`, where `seedFor` is FNV-1a 32-bit over the parts joined with `|` and the PRNG is mulberry32 (32-bit integer state, `Math.imul` only). All difficulty candidates of one day share this drawing seed, so the search changes difficulty without changing the Motif; the speckle layer has its own stream, `createPrng(seedFor('pw-speckle', dayKey, seed, motifIndex))`, so a larger speckle count adds pixels to the same positions instead of reshuffling them. No `Math.random`, no `Date`, no locale, no floating-point accumulation in pixel decisions.
 - Generation 0 uses the default Regeneration_Seed 0 and motif index 0. "Regenerate" creates generation n with seed n and the same motif index. "Skip" creates generation n with the same seed and motif index + 1, the next Motif in the Day_Key's sequence. Both values are stored as `g{n}:seed` and `g{n}:motifIndex` in `meta`, so rerunning with them reproduces the same Mosaic, Tiles, Clues and Solutions.
 - Motif sequence: `motifOrder(dayKey)` is a Fisher-Yates shuffle of the `MOTIFS` indexes with `createPrng(seedFor('pw-order', dayKey))`, constrained so that its first entry comes from family `dayOrdinal mod 3`. Consecutive days therefore start from different families. Motif index i uses `motifOrder(dayKey)[i mod MOTIFS.length]`.
 - Paper colour: a procedural Mosaic's background colour is `paper = dayOrdinal(dayKey) mod 4`, and every Motif keeps pixel (0, 0) at the paper colour. Two consecutive Day_Keys therefore differ at least at pixel (0, 0) (Req 3.3). The guarantee covers procedural Mosaics; a UGC_Mosaic Sunday uses the creator's pixels.
@@ -1234,32 +1238,29 @@ Motif families and symmetry (Req 3.4, Req 3.5):
 
 Every Motif draws a function only over its fundamental region (left half for a vertical axis, top half for a horizontal axis, one triangle for a diagonal axis, one quarter for both axes) and the generator mirrors it. `symmetryAxes(pixels)` is tested to contain every axis the Motif declares, and every pixel value is 0 to 3 (Req 3.5).
 
-Weekday density (Req 6.6): `densityFor` maps UTC Monday to 1 and Sunday to 7. Density sets the feature width (initial value: `max(1, 4 - floor(density / 2))` pixels) and the share of seeded detail pixels added in the fundamental region before mirroring (initial value: `10 × density` per thousand pixels), each replaced by a colour of a neighbouring pixel. Wider features give longer runs and easier Tiles; more detail gives shorter runs and harder Tiles.
+Weekday density (Req 6.6): `densityFor` maps UTC Monday to 1 and Sunday to 7. Density sets the feature width (`max(1, 4 - floor(density / 2))` pixels, frozen after the step 2 calibration) and the share of seeded detail pixels added in the fundamental region before mirroring (`10 × density` per thousand pixels, frozen likewise), each replaced by a colour of a neighbouring pixel. Wider features give longer runs and easier Tiles; more detail gives shorter runs and harder Tiles.
 
-Weekly difficulty band search (Req 6.4, Req 6.5):
+Weekly difficulty candidate rule (Req 6.4, Req 6.5), calibrated in step 2 (D29). The earlier plan used a per-weekday band table (`DIFFICULTY_BANDS`, 3 candidates). Calibration showed that a fixed band per weekday cannot track the curve, because the same density produces very different difficulty sums on different Motifs; the frozen rule instead chains each day's target to the day before it:
+
+- `CANDIDATE_SETTINGS` in `src/shared/mosaic.ts` holds 5 settings, easiest to hardest on measured data: half-resolution drawing, plain drawing, half-resolution plus 150‰ mirrored speckle, plain plus 150‰, plain plus 300‰. All 5 share the day's Motif, drawing seed and paper colour, so a candidate change never changes which Motif the day shows.
+- `previousDaySum(d)` is the generation-0 difficulty sum of the day before `d` (null on a Monday), memoised per process. Regenerations of the previous day use a different seed or motif index, so they never move a later day's target, and every Day_Key keeps one fixed target.
+- Monday takes its easiest candidate. Every later day takes the easiest candidate whose sum is at least the previous day's sum, strictly more on Thursday; when no candidate reaches the target the hardest is used and the 120-day test (Req 28.4) reports the miss.
 
 ```
 buildDay(d, opts):
   if opts.ugc is present: return the UGC path below
-  wd := utcWeekday(d); band := DIFFICULTY_BANDS[wd]; best := null
-  for v in 0 .. CANDIDATES_PER_DAY - 1:                          // 3 candidates
+  prev := previousDaySum(d); strict := utcWeekday(d) = Thursday
+  for v in 0 .. CANDIDATES_PER_DAY - 1:                          // 5 candidates
     def := MOTIFS[motifOrder(d)[motifIndex mod MOTIFS.length]]
-    prng := createPrng(seedFor('pw', d, seed, motifIndex, v))
-    pixels := drawMotif(def, 8 × tileSizeFor(d), densityFor(wd), paper, prng)
+    prng := createPrng(seedFor('pw', d, seed, motifIndex))
+    pixels := drawMotif(def, 8 × tileSizeFor(d), densityFor(utcWeekday(d)), paper, prng, CANDIDATE_SETTINGS[v])
     name := motifName(def, prng)
     slice := sliceToTiles(mosaic, d)
     sum := sum of the 64 Difficulty_Scores                         // integers, no division
-    if 64 × band.lo <= sum <= 64 × band.hi: return this candidate
-    keep the candidate whose sum is closest to the band (ties: lower v)
-  return the kept candidate
+  return the easiest candidate with sum >= prev (sum > prev when strict), else the hardest
 ```
 
-The band table is constant (`src/shared/mosaic.ts`) and must satisfy, in integer form:
-
-- `20 × lo[Tue] >= 19 × hi[Mon]`, `20 × lo[Wed] >= 19 × hi[Tue]`, `20 × lo[Fri] >= 19 × hi[Thu]`, `20 × lo[Sat] >= 19 × hi[Fri]`, `20 × lo[Sun] >= 19 × hi[Sat]` (each day at least 95% of the day before, Req 6.4);
-- `lo[Thu] > hi[Wed]` and `lo[Sun] > hi[Mon]` (Req 6.5).
-
-When every day of a week lands inside its band these inequalities give Req 6.4 and Req 6.5 directly, for example `mean[Tue] >= lo[Tue] >= 0.95 × hi[Mon] >= 0.95 × mean[Mon]`. A day whose 3 candidates all miss uses the closest one and may break the curve; the 120-day test (Req 28.4) catches that. Work step 2 calibrates the band values, density constants and Difficulty_Score coefficients on measured data so that every procedural day of the test window lands inside its band, then freezes them (Decisions D13, D29, D30). A unit test checks the inequalities on the table itself. The Tile_Size term of the Difficulty_Score (e) already separates Wednesday (5) from Thursday (6) and Monday from Sunday (7).
+The rule gives Req 6.4 and Req 6.5 directly: every day after Monday is at least 100% of the day before it (stronger than the required 95%), and the strict Thursday link makes the whole week strictly increasing from Monday to Sunday, so Sunday is always above Monday. A unit test (`mosaic.test.ts`, "picks candidates by the calibrated weekly rule") checks the rule itself against the 5 candidate sums; Property 18 checks the curve on the 120-day window. Calibration measured 0 curve failures on the 17 complete weeks of the window and on 104 weeks from 2025-01-06, with mean per-Tile difficulty rising Monday to Sunday from about 16 to about 41. The Tile_Size term of the Difficulty_Score (e) reinforces the Wednesday (5) to Thursday (6) and Monday to Sunday (7) steps.
 
 Motif names (Req 3.6): `<Adjective> <Noun>`, where the noun belongs to the Motif (for example "Pinwheel", "Herringbone", "Glyph") and the adjective is picked by the PRNG from a fixed word list. Names contain only ASCII letters, digits, spaces and hyphens and are 1 to 40 characters; a unit test runs `isValidMotifName` over every adjective and noun pair. The Scheduler builds the title `Day ${dayNumber} · ${motifName}` (Req 7.2).
 
@@ -1340,12 +1341,12 @@ difficulty := clamp(1, 100,
   + min(20, 5 × branchNodes))                                       // search needed
 ```
 
-The coefficients 10, 40, 6, 5 and 20 are initial values (Decision D30).
+The coefficients 10, 40, 6, 5 and 20 are frozen after the step 2 calibration (Decision D30).
 
 Par and mistake allowance (Req 5.4, Req 5.7):
 
 ```
-parSeconds       := clamp(10, 600, BASE[n] + 2 × difficulty)        BASE = { 5: 20, 6: 35, 7: 50 } (initial values)
+parSeconds       := clamp(10, 600, BASE[n] + 2 × difficulty)        BASE = { 5: 20, 6: 35, 7: 50 } (frozen after step 2)
 mistakeAllowance := clamp(0, 5, floor(difficulty / 25) + (n - 5))
 ```
 
@@ -1365,7 +1366,7 @@ Performance argument (Req 4.10, Req 5.5):
 - A line Clue with k runs summing to s has C(n - s + 1, k) placements; for n = 7 the largest count is 15 (k = 2, s = 2). One round filters at most 14 lines × 15 masks = 210 masks, and a propagation needs at most 49 rounds, because a round that fixes no Cell ends it: at most about 10,000 mask tests.
 - Each search node fixes a whole line, so the depth is at most 7 and each node runs one propagation. The theoretical node bound (15^7) is large, so the 50 ms limit is a measured property: the 120-day test records the longest single `solveNonogram` call and the longest `sliceToTiles` call of each day and fails above 50 ms or 5 s.
 - The Slicer calls the Solver at most 11 times per Tile (2 splits, 8 Perturbations, 1 fallback check). If every call hit the 50 ms cap, 64 Tiles would take 35 s, so the 5 s target relies on most Tiles being unique at the first split; the timing test above is the check, and calibration in work step 2 adjusts density if it fails.
-- `buildDay` runs at most 3 slices, so a Scheduler or regenerate request stays near 15 s in the worst measured-compliant case, inside the 30 s request limit (F5).
+- `buildDay` runs 5 slices (one per `CANDIDATE_SETTINGS` entry) plus, for the previous-day target, up to 6 memoised generation-0 days per process; at the measured slice times this stays far inside the 30 s request limit (F5).
 
 ### (f) Time_Distribution and rank
 
@@ -2067,12 +2068,11 @@ Unexpected Client exceptions: the React root is created with error handlers that
 | `src/shared/assignment.test.ts` | pure | 19 | `candidateFrom(1) = 0`, `candidateFrom(65) = 0` |
 | `src/shared/timedist.test.ts` | pure | 36, 37 | the worked example of Data Models (f) gives 65; N = 9 gives null; bucket 50 for a ratio of 5.0 |
 | `src/shared/streak.test.ts` | pure | 39, 40 | both worked examples of Data Models (g), row by row |
-| `src/shared/flair.test.ts` | pure | 42 | `flairStyle` of each tier |
 | `src/shared/wire.test.ts` | pure | 46, 54 | the largest case (complete 56×56, 5-digit Day_Number, 40-character name) is encoded and its byte size is printed, so the step 2 report can compare it with the 1,186 bytes computed in Data Models (h) |
-| `src/shared/play.test.ts` | pure | 48, 49, 50 | a drag that turns back restores the Cells it left |
-| `src/shared/ghost.test.ts` | pure | 51 | a Clues set with no forced Cell gives row 0 with no Cells |
-| `src/shared/heat.test.ts` | pure | 53 | the legend texts "0", "1", "2 to 3", "4 to 7", "8 or more" |
-| `src/shared/ugc.test.ts` | pure | 55, 56 | sides 31 and 57, a non-square image and the character `4` are rejected with the right check; side 56 is the identity; side 32 is centred at offset 12 |
+| `src/shared/play.test.ts` | pure | 48, 49, 50 | step 3; a drag that turns back restores the Cells it left |
+| `src/shared/ghost.test.ts` | pure | 51 | step 3; a Clues set with no forced Cell gives row 0 with no Cells |
+| `src/shared/misc.test.ts` | pure | 42, 53 | the heat legend texts "0", "1", "2 to 3", "4 to 7", "8 or more"; `flairStyle` of each tier; emoji, analytics, grid and base64 examples |
+| `src/shared/ugc.test.ts` | pure | 55, 56 | step 6; sides 31 and 57, a non-square image and the character `4` are rejected with the right check; side 56 is the identity; side 32 is centred at offset 12 |
 | `src/shared/palette.test.ts` | pure | 66 | a deliberately bad palette fails `checkPalette`, so the checker itself is tested |
 | `src/client/lib/track.test.ts` | Vitest with the Journeys client module mocked | 47 | each of the 7 names is accepted; an eighth name, 11 properties, a 65-character string and a `username` key are rejected |
 | `src/server/core/assign.test.ts` | `@devvit/test` | 20, 21 | N = 1, 63, 64 and 65 with one request per user; a practice open writes nothing (Decision D11) |

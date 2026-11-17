@@ -1,0 +1,10 @@
+{
+  "extends": "../../tools/tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "../../node_modules/.tmp/shared",
+    "tsBuildInfoFile": "../../node_modules/.tmp/shared/tsconfig.tsbuildinfo",
+    "types": []
+  },
+  "include": ["./**/*.ts"],
+  "exclude": ["./**/*.test.ts", "./test/**"]
+}

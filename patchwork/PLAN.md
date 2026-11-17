@@ -146,7 +146,7 @@ A configuration sketch for step 2, not final code. Keys come from the [Devvit We
 
 | Limit (doc source) | How the plan stays within it |
 |---|---|
-| 30 s per server request ([Devvit Web overview](https://developers.reddit.com/docs/capabilities/devvit-web/devvit_web_overview)) | `buildDay` tries at most 3 candidates of at most 5 s each (Req 4.10), and the next day's Tiles are pre-built the day before (D32). |
+| 30 s per server request ([Devvit Web overview](https://developers.reddit.com/docs/capabilities/devvit-web/devvit_web_overview)) | `buildDay` slices 5 candidates plus the memoised previous-day chain, measured far under 30 s, and the next day's Tiles are pre-built the day before (D32). |
 | 20 concurrent transactions, 5 s timeout ([Redis](https://developers.reddit.com/docs/capabilities/server/redis)) | Only an accepted Stitch or an upvote opens a transaction; each watches one per-user key. At 5,000 Stitches in 60 s (about 83 per second) the open blocks stay under 20 while each block lasts under 0.24 s; step 4 measures it. |
 | 40,000 Redis commands per second ([Redis](https://developers.reddit.com/docs/capabilities/server/redis)) | About 10 commands per new assignment and about 23 per scored Stitch (up to 26 with a realtime window and a flair call): at most 83 × 36 = 2,988 per second at that load, about 7.5% of the limit. |
 | 100 realtime messages per second ([Realtime](https://developers.reddit.com/docs/capabilities/realtime/overview)) | At most 2 messages per second per Day_Key channel, plus one trailing snapshot per `tick`. |
@@ -344,14 +344,14 @@ C6. after exec: Stitched_Total := hLen first; at 64, hSetNX meta g{g}:done now (
 | glyph | mirrored pixel glyph | seeded strokes and blobs in one quarter, mirrored into 2-fold or 4-fold symmetry |
 
 - Every Motif is drawn only over its fundamental region and mirrored, so it is symmetric about at least one vertical, horizontal or diagonal centre axis (Req 3.4). A test checks the declared axes.
-- Every pixel is one of the 4 Palette colours (Req 3.5). Each Palette entry has a pattern (solid, diagonal, dots, cross) and a light and a dark value (D31). The hex values are chosen in step 2 and must pass `checkPalette` (pairwise contrast of at least 1.5:1 under protanopia, deuteranopia and tritanopia simulation, at least 3:1 against the empty Cell) and `checkTextContrast` (text at least 4.5:1, focus ring at least 3:1) in both modes (Req 25.7, Req 26.1, Req 26.2, Req 26.6).
+- Every pixel is one of the 4 Palette colours (Req 3.5). Each Palette entry has a pattern (solid, diagonal, dots, cross) and a light and a dark value (D31). The hex values were frozen in step 2 (Navy, Rust, Teal, Ochre; values in design.md and `src/shared/palette.ts`) and pass `checkPalette` (pairwise contrast of at least 1.5:1 under protanopia, deuteranopia and tritanopia simulation, at least 3:1 against the empty Cell) and `checkTextContrast` (text at least 4.5:1, focus ring at least 3:1) in both modes (Req 25.7, Req 26.1, Req 26.2, Req 26.6).
 - Motif names are "<Adjective> <Noun>" from fixed word lists, ASCII letters, digits, spaces and hyphens, 1 to 40 characters (Req 3.6). The post title is "Day N · <Motif name>" (Req 7.2).
 
 ### Weekly difficulty curve
 
-- Density rises from 1 on Monday to 7 on Sunday (Req 6.6). Higher density gives narrower features and more detail pixels, which means shorter runs and harder Tiles. The density constants are initial values (D29).
-- `buildDay` tries up to 3 variants and keeps the first whose total Difficulty_Score lies inside the weekday's band, else the closest one (D29). The band table must satisfy, in integer form, that each day's lower bound is at least 95% of the previous day's upper bound within the week, that Thursday's lower bound is above Wednesday's upper bound, and that Sunday's lower bound is above Monday's upper bound. If every day lands in its band this gives Req 6.4 and Req 6.5 directly.
-- Step 2 calibrates the bands, density and Difficulty_Score coefficients on measured data so every procedural day of the 120-day test window lands in its band, then freezes them (D13, D30). The 120-day test guards the result.
+- Density rises from 1 on Monday to 7 on Sunday (Req 6.6). Higher density gives narrower features and more detail pixels, which means shorter runs and harder Tiles. The density constants are frozen after the step 2 calibration (D29).
+- `buildDay` draws 5 candidates that share the day's Motif and seed and differ only in drawing resolution and speckle (`CANDIDATE_SETTINGS`, frozen in step 2). Monday takes its easiest candidate; every later day takes the easiest candidate whose Difficulty_Score sum is at least the previous day's generation-0 sum, strictly more on Thursday; when none reaches it, the hardest is used (D29). Every day is then at least 100% of the day before (stronger than the 95% of Req 6.4) and the strict Thursday link makes Sunday always above Monday (Req 6.5). This chained-target rule replaces the weekday band table of the approved plan, because a fixed band per weekday cannot track the curve across Motifs; design.md "(d)" records the change.
+- Step 2 froze the candidate settings, density constants and Difficulty_Score coefficients on measured data (D13, D30): 0 curve failures over the 120-day test window's 17 weeks and over 104 weeks from 2025-01-06. The 120-day test guards the result.
 
 ### Slicer
 
@@ -366,8 +366,8 @@ C6. after exec: Stitched_Total := hLen first; at 64, hSetNX meta g{g}:done now (
 
 - `solveNonogram(clues)` returns `unique` (with the Solution and Difficulty_Score), `multiple` (with two witnesses), `unsolvable`, or `invalid` for malformed Clues. It never throws (Req 5.1, Req 5.2, Req 5.8).
 - Algorithm: precomputed line-mask tables for sizes 5, 6 and 7 (32, 64 and 128 masks), line-by-line propagation until nothing changes, then a bounded search that branches on the line with the fewest candidates and stops as soon as 2 full solutions exist. Every iteration order is fixed, so identical Clues give an identical result (Req 5.6). A uniqueness check must take under 50 ms per 7×7 Tile (Req 4.4, Req 5.5).
-- Difficulty_Score, an integer from 1 to 100 built from the solve trace: `10 × (n - 4)` for the Tile_Size, up to 40 for the share of Cells not resolved in the first propagation round, 6 per extra round, and `5 × branch nodes` capped at 20 (initial coefficients, D30).
-- Par: `parSeconds = clamp(10, 600, BASE[n] + 2 × difficulty)` with BASE 20, 35 and 50 for sizes 5, 6 and 7, and `mistakeAllowance = clamp(0, 5, floor(difficulty / 25) + (n - 5))` (initial values, D30). A higher Difficulty_Score or a larger Tile_Size never lowers Par (Req 5.4, Req 5.7).
+- Difficulty_Score, an integer from 1 to 100 built from the solve trace: `10 × (n - 4)` for the Tile_Size, up to 40 for the share of Cells not resolved in the first propagation round, 6 per extra round, and `5 × branch nodes` capped at 20 (coefficients frozen in step 2, D30).
+- Par: `parSeconds = clamp(10, 600, BASE[n] + 2 × difficulty)` with BASE 20, 35 and 50 for sizes 5, 6 and 7, and `mistakeAllowance = clamp(0, 5, floor(difficulty / 25) + (n - 5))` (frozen in step 2, D30). A higher Difficulty_Score or a larger Tile_Size never lowers Par (Req 5.4, Req 5.7).
 
 ### UGC Sunday path
 
@@ -504,7 +504,7 @@ Desktop Chrome with DevTools open before the post loads, "Preserve log" on, erro
 | # | Risk | Mitigation |
 |---|---|---|
 | R1 | Solver or Slicer slower than 50 ms per 7×7 call or 5 s per Mosaic. | Bit-mask line tables, fixed order, timing checks in the 120-day test, density calibration, next-day pre-build (D32). |
-| R2 | Calibration cannot put every procedural day inside its band. | More candidates, retuned bands, density and coefficients (D29, D30); the band-table inequalities are unit-tested. |
+| R2 | A day finds no candidate that reaches the previous day's sum. | 5 calibrated candidates per day, the hardest as the documented fallback, and Property 18 fails the 120-day test on any miss; calibration measured 0 misses over 121 weeks (D29, D30). |
 | R3 | Stitch transactions hit the 20-block limit at peak. | One watched per-user key, at most 10 queued commands, a measured block duration, safe retry. |
 | R4 | The six-part cron for `tick` does not run. | Fall back to `* * * * *` (D28); preview updates may then take longer than 60 s. |
 | R5 | The cron time zone is not UTC. | The `tick` creation window 00:00:00 to 00:04:59 UTC (D21); checked in playtest logs. |
@@ -569,7 +569,7 @@ Process and engineering decisions:
 - **D3** The owner creates the project outside the workspace; the agent moves it in.
 - **D9** Realtime coalescing plus polling after 15 s without a message.
 - **D10** Bundle budget 130 KB gzipped, launch screen 15 KB gzipped.
-- **D13, D29, D30** Difficulty bands, density and formula constants are initial values calibrated in step 2 and then frozen.
+- **D13, D29, D30** Difficulty candidate settings, density and formula constants were calibrated in step 2 and are frozen; the planned band table became the chained candidate rule (design.md "(d)").
 - **D14, D15, D27** Per-Tile binary split; only uniform Tiles and non-unique Tiles are perturbed; UGC slicing has no fallback.
 - **D16, D23** Moderator review through a Mod_Menu form plus an in-post panel; "moderator" means the 'all' or 'posts' permission.
 - **D18, D41, D45** Accepted residual failure windows (a skipped counter value; a kept Scored_Attempt after a later failure; a post left without data if Redis and the Reddit API fail together).
