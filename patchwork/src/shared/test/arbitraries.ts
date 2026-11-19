@@ -135,6 +135,27 @@ export const playedDaysArb: fc.Arbitrary<DayKey[]> = fc
   .record({ start: dayKeyArb, offsets: fc.array(fc.integer({ min: 0, max: 59 }), { maxLength: 80 }) })
   .map(({ start, offsets }) => offsets.map((o) => dayKeyFromOrdinal(dayOrdinal(start) + o)));
 
+/** Cell states 0 (empty), 1 (filled) and 2 (marked-X). */
+export function cellStatesArb(n: TileSize): fc.Arbitrary<Uint8Array> {
+  return fc
+    .array(fc.constantFrom(0, 0, 1, 1, 2), { minLength: n * n, maxLength: n * n })
+    .map((xs) => Uint8Array.from(xs));
+}
+
+/** Sequences of pointer and key inputs for playReducer. */
+export function inputSeqArb(n: TileSize): fc.Arbitrary<readonly { type: string; cell?: number; key?: string }[]> {
+  const cell = fc.integer({ min: 0, max: n * n - 1 });
+  const action = fc.oneof(
+    cell.map((c) => ({ type: 'press', cell: c })),
+    cell.map((c) => ({ type: 'tap', cell: c })),
+    cell.map((c) => ({ type: 'longPress', cell: c })),
+    cell.map((c) => ({ type: 'dragTo', cell: c })),
+    fc.constant({ type: 'release' }),
+    fc.tuple(cell, fc.constantFrom('Space', 'KeyX', 'Backspace', 'Delete')).map(([c, key]) => ({ type: 'key', cell: c, key })),
+  );
+  return fc.array(action, { maxLength: 24 });
+}
+
 export const solveCountsArb = fc.array(fc.oneof(fc.constant(0), fc.integer({ min: 0, max: 3 }), fc.integer({ min: 0, max: 20 })), {
   minLength: 64,
   maxLength: 64,

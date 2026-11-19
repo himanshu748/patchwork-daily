@@ -683,23 +683,31 @@ export function encodeGrid(states: ArrayLike<CellState>): string;               
 export function decodeGrid(text: string, size: TileSize): Uint8Array | null;          // null on wrong length or character
 export function filledMask(states: ArrayLike<CellState>): Uint8Array;                 // marked-X and empty both become 0
 export function tapResult(current: CellState, markMode: boolean): CellState;
+export type Direction = 'up' | 'down' | 'left' | 'right';
+export function moveFocus(cell: number, direction: Direction, size: TileSize): number;   // stays put at the Tile edge (Req 26.3)
 export type PlayAction =
-  | { readonly type: 'tap'; readonly cell: number }
+  | { readonly type: 'press'; readonly cell: number }          // pointer down; arms the tap or the drag
+  | { readonly type: 'tap'; readonly cell: number }            // a clean tap reported by the client, no press first
   | { readonly type: 'longPress'; readonly cell: number }
   | { readonly type: 'dragTo'; readonly cell: number }
   | { readonly type: 'release' }
   | { readonly type: 'key'; readonly key: 'Space' | 'KeyX' | 'Backspace' | 'Delete'; readonly cell: number }
+  | { readonly type: 'markMode'; readonly on: boolean }
   | { readonly type: 'reset'; readonly cells: Uint8Array };
 export interface PlayState {
   readonly size: TileSize; readonly cells: Uint8Array; readonly markMode: boolean; readonly locked: boolean;
-  readonly drag: { readonly start: number; readonly axis: 'row' | 'col' | null; readonly paint: CellState; readonly before: Uint8Array } | null;
+  readonly submit: boolean;                                    // set once, on the first state in which every line matches (Req 10.8)
+  readonly drag: { readonly start: number; readonly axis: 'row' | 'col' | null; readonly paint: CellState; readonly longPressed: boolean; readonly before: Uint8Array } | null;
 }
-export function playReducer(state: PlayState, action: PlayAction): PlayState;
+export function initialPlayState(size: TileSize, cells?: Uint8Array, markMode?: boolean): PlayState;
+export function playReducer(state: PlayState, action: PlayAction, clues?: Clues): PlayState;
 
 // src/shared/ghost.ts  (Req 10.10, Req 10.11)
 export interface GhostPlan { readonly row: number; readonly cells: readonly number[]; }
 export function planGhostRow(clues: Clues): GhostPlan;
 ```
+
+The reducer refines the design's action list in two documented ways: a `press` action arms the tap-or-drag (the design's "tap" is a press and release on one Cell, applied on release, Req 10.5), and an optional `clues` argument lets the reducer set `submit` exactly once on the first state in which every line matches (Req 10.8); that state also sets `locked`, so later Cell input is ignored (Req 10.9, Req 16.4) until `reset`. During a drag the reducer repaints from `before` on every `dragTo`, so Cells left behind return to their state before the drag (Req 10.6). A long-press sets the start Cell to marked-X at the 400 ms mark and the release applies no tap rule (Req 10.4).
 
 `planGhostRow` uses only the Clues: for each row it computes the Cells forced by the row Clue alone (the overlap of the leftmost and rightmost placements), takes the row with the most forced Cells (ties go to the lowest row), and returns those Cells. If no row has a forced Cell, it returns row 0 with no Cells and the animation shows a tap that fills and clears the first Cell without leaving a state. The Ghost_Hand therefore never needs the Solution.
 
@@ -2069,8 +2077,8 @@ Unexpected Client exceptions: the React root is created with error handlers that
 | `src/shared/timedist.test.ts` | pure | 36, 37 | the worked example of Data Models (f) gives 65; N = 9 gives null; bucket 50 for a ratio of 5.0 |
 | `src/shared/streak.test.ts` | pure | 39, 40 | both worked examples of Data Models (g), row by row |
 | `src/shared/wire.test.ts` | pure | 46, 54 | the largest case (complete 56×56, 5-digit Day_Number, 40-character name) is encoded and its byte size is printed, so the step 2 report can compare it with the 1,186 bytes computed in Data Models (h) |
-| `src/shared/play.test.ts` | pure | 48, 49, 50 | step 3; a drag that turns back restores the Cells it left |
-| `src/shared/ghost.test.ts` | pure | 51 | step 3; a Clues set with no forced Cell gives row 0 with no Cells |
+| `src/shared/play.test.ts` | pure | 48, 49, 50 | a drag that turns back restores the Cells it left |
+| `src/shared/ghost.test.ts` | pure | 51 | a Clues set with no forced Cell gives row 0 with no Cells |
 | `src/shared/misc.test.ts` | pure | 42, 53 | the heat legend texts "0", "1", "2 to 3", "4 to 7", "8 or more"; `flairStyle` of each tier; emoji, analytics, grid and base64 examples |
 | `src/shared/ugc.test.ts` | pure | 55, 56 | step 6; sides 31 and 57, a non-square image and the character `4` are rejected with the right check; side 56 is the identity; side 32 is centred at offset 12 |
 | `src/shared/palette.test.ts` | pure | 66 | a deliberately bad palette fails `checkPalette`, so the checker itself is tested |
