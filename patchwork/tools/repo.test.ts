@@ -1,6 +1,8 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { basename, dirname, join, relative, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { PALETTE, THEME } from '../src/shared/palette';
+import type { ThemeTokens } from '../src/shared/palette';
 
 const ROOT = resolve(import.meta.dirname, '..');
 const SKIP_DIRS = new Set(['node_modules', 'dist', '.git', '__snapshots__']);
@@ -38,7 +40,36 @@ const pkg = readJson(join(ROOT, 'package.json'));
 const sharedSources = walk(join(ROOT, 'src/shared')).filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts') && !f.includes('/test/'));
 
 /** Every dependency must be listed here; none is a paid service or LLM SDK (Req 1.8). */
-const DEPENDENCY_ALLOWLIST = new Set(['@types/node', 'fast-check', 'typescript', 'vitest']);
+const DEPENDENCY_ALLOWLIST = new Set([
+  // Devvit Web runtime, build plugin, test harness and Journeys analytics (React template, F2, F27, F28).
+  '@devvit/analytics',
+  '@devvit/start',
+  '@devvit/test',
+  '@devvit/web',
+  'devvit',
+  // Server framework and client UI from the template.
+  '@hono/node-server',
+  'hono',
+  'react',
+  'react-dom',
+  // Build, type and lint tooling from the template.
+  '@eslint/js',
+  '@types/node',
+  '@types/react',
+  '@types/react-dom',
+  '@vitejs/plugin-react',
+  'eslint',
+  'eslint-plugin-react-hooks',
+  'eslint-plugin-react-refresh',
+  'globals',
+  'prettier',
+  'typescript',
+  'typescript-eslint',
+  'vite',
+  // Tests.
+  'fast-check',
+  'vitest',
+]);
 
 describe('repository checks', () => {
   it('sets strict in every tsconfig (Req 28.1)', () => {
@@ -102,10 +133,11 @@ describe('repository checks', () => {
     }
   });
 
-  it('imports the Journeys client module only from src/client/lib/track.ts (Req 24.1)', () => {
-    for (const file of walk(join(ROOT, 'src')).filter((f) => /\.tsx?$/.test(f))) {
-      if (rel(file) === 'src/client/lib/track.ts') continue;
-      expect(readFileSync(file, 'utf8'), rel(file)).not.toMatch(/from\s+['"][^'"]*journeys[^'"]*['"]/i);
+  it('imports Journeys only from src/client/lib/track.ts and the server telemetry route (Req 24.1)', () => {
+    const allowed = new Set(['src/client/lib/track.ts', 'src/server/routes/telemetry.ts']);
+    for (const file of walk(join(ROOT, 'src')).filter((f) => /\.tsx?$/.test(f) && !f.endsWith('.test.ts'))) {
+      if (allowed.has(rel(file))) continue;
+      expect(readFileSync(file, 'utf8'), rel(file)).not.toMatch(/(?:from\s+|import\s*\(\s*)['"]@devvit\/analytics/);
     }
   });
 
@@ -123,7 +155,56 @@ describe('repository checks', () => {
     }
   });
 
+  it.skipIf(!existsSync(tokens))('keeps tokens.css colours equal to src/shared/palette.ts (Req 25.1)', () => {
+    const text = readFileSync(tokens, 'utf8');
+    const [light = '', dark = ''] = text.split('@media (prefers-color-scheme: dark)');
+    const read = (block: string): Map<string, string> =>
+      new Map([...block.matchAll(/--colour-([\w-]+)\s*:\s*(#[0-9a-fA-F]{6})\s*;/g)].map((m) => [m[1] as string, (m[2] as string).toLowerCase()]));
+    const names: Record<keyof ThemeTokens, string> = {
+      paper: 'paper',
+      ink: 'ink',
+      inkMuted: 'ink-muted',
+      emptyCell: 'empty-cell',
+      gridLine: 'grid-line',
+      focus: 'focus',
+      focusHalo: 'focus-halo',
+      placeholder: 'placeholder',
+    };
+    for (const [mode, block] of [['light', light], ['dark', dark]] as const) {
+      const css = read(block);
+      for (const [key, name] of Object.entries(names)) expect(css.get(name), `${mode} --colour-${name}`).toBe(THEME[mode][key as keyof ThemeTokens]);
+      for (const entry of PALETTE) expect(css.get(`palette-${entry.id}`), `${mode} palette ${entry.id}`).toBe(entry[mode]);
+    }
+  });
+
   const client = join(ROOT, 'src/client');
+  it.skipIf(!existsSync(client))('calls fetch only in lib/api.ts and only for /api/ paths (Req 1.8, Req 2.1)', () => {
+    for (const file of walk(client).filter((f) => /\.tsx?$/.test(f) && !f.endsWith('.test.ts'))) {
+      const text = readFileSync(file, 'utf8');
+      if (rel(file) !== 'src/client/lib/api.ts') expect(text, rel(file)).not.toMatch(/\bfetch\s*\(/);
+      for (const m of text.matchAll(/\bapi(?:Get|Post)(?:<[^>]*>)?\(\s*(['"`])([^'"`]*)\1/g)) {
+        expect(m[2], rel(file)).toMatch(/^\/api\//);
+      }
+      expect(text, rel(file)).not.toMatch(/https?:\/\//);
+    }
+  });
+
+  it.skipIf(!existsSync(client))('uses Devvit effects instead of window.location and alert (template rule)', () => {
+    for (const file of walk(client).filter((f) => /\.tsx?$/.test(f) && !f.endsWith('.test.ts'))) {
+      expect(readFileSync(file, 'utf8'), rel(file)).not.toMatch(/\b(?:window\.)?location\.(?:href|assign|replace|reload)\b|\bwindow\.location\s*=|\b(?:window\.)?alert\s*\(/);
+    }
+  });
+
+  it.skipIf(!existsSync(client))('loads every client script from a file, never inline (template rule)', () => {
+    for (const file of walk(client).filter((f) => f.endsWith('.html'))) {
+      const text = readFileSync(file, 'utf8');
+      for (const m of text.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)) {
+        expect(m[1], rel(file)).toMatch(/\bsrc=/);
+        expect((m[2] ?? '').trim(), rel(file)).toBe('');
+      }
+    }
+  });
+
   it.skipIf(!existsSync(client))('keeps colour literals out of client code except tokens.css (Req 25.1)', () => {
     for (const file of walk(client).filter((f) => /\.(tsx?|css)$/.test(f) && f !== tokens)) {
       expect(readFileSync(file, 'utf8'), rel(file)).not.toMatch(/#[0-9a-fA-F]{3,8}\b|\brgba?\(|\bhsla?\(/);
@@ -132,9 +213,27 @@ describe('repository checks', () => {
 
   const devvitJson = join(ROOT, 'devvit.json');
   it.skipIf(!existsSync(devvitJson))('declares the daily-post task at 00:00 UTC with internal endpoints (Req 7.5, F3)', () => {
-    const json = readJson(devvitJson) as { scheduler?: { tasks?: Record<string, { endpoint?: string; cron?: string }> } };
+    const json = readJson(devvitJson) as {
+      scheduler?: { tasks?: Record<string, { endpoint?: string; cron?: string }> };
+      permissions?: Record<string, unknown>;
+      post?: { entrypoints?: Record<string, { entry?: string; inline?: boolean; height?: string }> };
+      triggers?: Record<string, string>;
+      menu?: { items?: { endpoint?: string }[] };
+      forms?: Record<string, string>;
+    };
     const task = json.scheduler?.tasks?.['daily-post'];
     expect(task?.cron).toBe('0 0 * * *');
-    expect(task?.endpoint?.startsWith('/internal/')).toBe(true);
+    for (const t of Object.values(json.scheduler?.tasks ?? {})) expect(t.endpoint?.startsWith('/internal/')).toBe(true);
+    for (const e of Object.values(json.triggers ?? {})) expect(e.startsWith('/internal/')).toBe(true);
+    for (const i of json.menu?.items ?? []) expect(i.endpoint?.startsWith('/internal/')).toBe(true);
+    for (const e of Object.values(json.forms ?? {})) expect(e.startsWith('/internal/')).toBe(true);
+    expect(json.permissions).toEqual({
+      redis: true,
+      realtime: true,
+      journeys: true,
+      reddit: { enable: true, scope: 'moderator', asUser: ['SUBMIT_COMMENT'] },
+    });
+    expect(json.post?.entrypoints?.default).toEqual({ entry: 'splash.html', inline: true, height: 'tall' });
+    expect(json.post?.entrypoints?.game?.entry).toBe('game.html');
   });
 });

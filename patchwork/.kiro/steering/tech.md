@@ -54,7 +54,8 @@ Consequences of the five-command rule (L8, D35, D36):
 
 ## Stack
 
-- Devvit Web from the official React template: `@devvit/web`, `@devvit/start` and `devvit` 0.15.3, Hono server, React 19, Vite 8, TypeScript (versions from the template at creation time).
+- Devvit Web from the official React template: `@devvit/web`, `@devvit/start` and `devvit` 0.15.4, Hono server, React 19, Vite 8, TypeScript (versions from the template at creation time).
+- Web view rules from the template: `navigateTo` instead of `window.location`, `showToast` or `showForm` instead of `window.alert`, no inline `<script>`, Devvit Web only (no blocks or `@devvit/public-api`), and every `devvit.json` endpoint has a matching `/internal/*` route.
 - Added in step 2: `vitest`, `@devvit/test`, `fast-check`, `@devvit/analytics`. Removed: Tailwind (D24), `public/snoo.png` (Req 2.8), the `launch` script.
 - Hand-written CSS in one `tokens.css` with the Palette, theme tokens and one type scale.
 

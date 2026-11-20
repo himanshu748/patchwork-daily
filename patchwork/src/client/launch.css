@@ -1,0 +1,30 @@
+.launch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  height: 100%;
+  padding: var(--space-3);
+  overflow: hidden;
+}
+
+.launch-canvas {
+  display: block;
+  width: min(100%, calc(100vh - 150px));
+  aspect-ratio: 1;
+  border-radius: var(--radius);
+  background: var(--colour-placeholder);
+}
+
+.launch-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  text-align: center;
+}
+
+.launch-play {
+  min-width: 160px;
+}

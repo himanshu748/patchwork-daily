@@ -182,8 +182,10 @@ describe('play', () => {
       { numRuns: PBT_RUNS },
     );
 
+    // Every real Tile has at least one filled Cell (Req 4.9); an empty Tile would match before any input.
+    const tileArb = sizedGridArb.filter(({ grid }) => grid.some((v) => v === 1));
     fc.assert(
-      fc.property(sizedGridArb, fc.array(fc.boolean(), { minLength: 1, maxLength: 49 }), fc.integer({ min: 0, max: 8 }), ({ n, grid }, fill, extra) => {
+      fc.property(tileArb, fc.array(fc.boolean(), { minLength: 1, maxLength: 49 }), fc.integer({ min: 0, max: 8 }), ({ n, grid }, fill, extra) => {
         const clues = deriveClues(grid, n);
         const cells = new Uint8Array(n * n);
         const toFill: number[] = [];

@@ -135,12 +135,14 @@ Project creation (work step 2, before any application code, Req 1.3, Req 1.7, De
 3. The agent moves the generated files into `patchwork/` without overwriting `PLAN.md`, `AGENTS.md` or `.kiro/`. Useful guidance from the template's own `AGENTS.md` is merged into `patchwork/AGENTS.md`. No source code is copied from Foldline or `app/` (Req 1.3).
 4. The agent applies the template changes below, then runs `npm test` and `npm run build` on Node 24.18 or later (Req 1.4, Req 1.11).
 
+As built (step 3, deviation from D3 approved by the owner's "do it yourself"): the agent cloned the official React template repository (`reddit/devvit-template-react`, linked from the [template library](https://developers.reddit.com/docs/examples/template-library), commit `a080d86`) into a scratch directory outside the workspace with `git clone --depth 1`, which needs no Reddit sign-in, and merged it into `patchwork/` with the app name `patchwork`. Not copied: `public/snoo.png`, `splash.tsx`, `index.css`, the counter hook and the template's routes. The app is not registered with Reddit yet: before the first playtest in step 4 the owner runs `devvit login` in their own terminal (Req 1.7), and the first `npm run dev` or `devvit upload` registers the name. The scratch clone was deleted after the merge.
+
 | Template file | Change | Requirement |
 |---|---|---|
 | `package.json` | Delete the `launch` script. Set `engines.node` to ">=24.18.0". Set `test` to `vitest --run`. Add devDependencies `vitest`, `@devvit/test`, `fast-check`; add dependency `@devvit/analytics`. Remove `tailwindcss` and `@tailwindcss/vite` (Decision D24). Set `build` to run `tsc --build`, `vite build` and `node tools/check-bundle.mjs` in that order, and add no separate `size` script (Decision D36). Keep `dev`, `build`, `deploy`, `login`. | Req 1.4, Req 1.5, Req 1.6, Req 27.3, Req 28.10 |
 | `.nvmrc` | Add with `24`. `engines.node` carries the 24.18 minimum. | Req 1.4 |
 | `public/snoo.png` | Delete, and remove every reference to it. | Req 2.8 |
-| `src/client/splash.tsx` | Replace with framework-free `splash.ts`; `splash.html` loads it and inlines the launch-screen CSS. | Req 25.5, Req 27.1, B14 |
+| `src/client/splash.tsx` | Replace with framework-free `splash.ts`; `splash.html` loads it and inlines the launch-screen CSS. As built, the launch CSS is two small files emitted by the Vite build (`default.css` and the shared `tokens.css` chunk, together under 3 KB) instead of inline CSS, because the Vite plugin bundles imported CSS. | Req 25.5, Req 27.1, B14 |
 | `src/client/game.html`, `src/client/game.tsx` | Rewrite as the Patchwork game shell. | Req 10, Req 16, Req 17 |
 | `src/client/index.css` | Replace with `tokens.css` (Palette tokens, one type scale, light and dark). | Req 25.1 to Req 25.3 |
 | `vite.config.ts` | Remove the Tailwind plugin; keep the React plugin and the Devvit Vite plugin. | Req 27.3 |
@@ -723,7 +725,8 @@ export interface MosaicSnapshot {
   readonly pixels: string; readonly complete: boolean; readonly completeAtMs: number | null; readonly version: number;
 }
 export function packStitchedPixels(tiles: readonly (Uint8Array | null)[], size: TileSize): { readonly mask: string; readonly pixels: string };
-export function unpackStitchedPixels(mask: string, pixels: string, size: TileSize): readonly (Uint8Array | null)[];
+export function unpackStitchedPixels(mask: string, pixels: string, size: TileSize): (Uint8Array | null)[] | null;   // null when mask, pixels and lengths disagree
+export function unpackTilePixels(pixels: string, size: TileSize): Uint8Array | null;   // one Tile in the same 2-bit packing (SubmitAccepted.tilePixels)
 export function encodePostWire(snapshot: MosaicSnapshot): PostWire;
 export function decodePostWire(value: unknown): PostWire | null;
 
@@ -739,11 +742,15 @@ export type ApiResult<T> = ({ readonly ok: true } & T) | ApiError;
 export interface TileWire { readonly gen: number; readonly index: number; readonly size: TileSize; readonly rowClues: readonly Clue[]; readonly colClues: readonly Clue[]; }
 ```
 
+As built in step 3, the assign and extra responses also carry the request's `dayKey` (and the extra response `dayNumber` and `serverNowMs`), because `SubmitRequest` must echo the Day_Key and the Client may hold a stale `postData`; `ClientErrorCode` adds `NETWORK` and `TIMEOUT`, which only the Client's request helper produces.
+
 `TileWire` is the only Tile shape sent before a Stitch: Clues, Tile_Size, Tile_Index and the generation number, never Solution or pixel data (Req 9.9).
 
 ### Server (`src/server/`)
 
-`src/server/index.ts` builds the Hono app, mounts `createTelemetryRouter()` (F27) and the route modules, and starts the server with the template's documented bootstrap. Routes are thin: they parse input, call one core service, and map its outcome to an HTTP status and an `ApiResult`.
+`src/server/index.ts` builds the Hono app, mounts the telemetry routes (F27) and the route modules, and starts the server with the template's documented bootstrap. Routes are thin: they parse input, call one core service, and map its outcome to an HTTP status and an `ApiResult`.
+
+Telemetry, as built in step 3: the docs mount `createTelemetryRouter()` with `app.use(...)`, but in the installed `@devvit/analytics` 0.15.4 it returns an Express router, which Hono cannot mount. The Journeys page's own Hono example calls the server `telemetry` methods directly. `src/server/routes/telemetry.ts` therefore serves, in Hono, the four paths Patchwork's client calls under `/api/telemetry` (`/journey/start`, `/journey/interaction`, `/journey/end`, `/journey/app-ready`, from the package's `TELEMETRY_JOURNEY_ENDPOINTS`; `progress` is unused), with the same body checks as the package router, and forwards each to the documented server `telemetry` method, returning its receipt. The server `endJourney({ complete: true })` sends the user-progress signal itself, so nothing is lost against the Express router.
 
 #### Routes
 

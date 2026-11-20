@@ -1,6 +1,6 @@
 # Patchwork: Plan
 
-Status: work step 1 of 8 (plan). **Waiting for the owner's approval.** No application code is written until the owner explicitly approves this plan (Req 1.9, Req 1.13).
+Status: approved by the owner. Work steps 1 to 3 are complete (plan; Shared_Logic; Play_Screen, Stitch_Animation and End_Card). Step 4 (Scheduler, Tile_Assigner, Validator, Leaderboard, Streak_Tracker, Flair_Manager) is next and needs the owner's `devvit login` for the first playtest. Step results are recorded in `docs/verification.md`.
 
 Patchwork is a daily, asynchronous community nonogram game for Reddit's Game of the Day Hackathon, built as a Devvit Web Interactive Post from a fresh React-template project. Each UTC day the Scheduler posts one hidden Mosaic of 8×8 Tiles. A player who opens the post gets one Tile (the Scored_Attempt), fills Cells from the row and column Clues, and the Server checks the submitted fill grid against the stored Solution before it records a Stitch. The shared Mosaic fills in through the day. Once all 64 Tiles are stitched, later players reinforce Weak_Tiles, so a latecomer always gets a Tile whose Stitch counts.
 
@@ -54,6 +54,8 @@ Git: one repository at the workspace root on `main`, shared with other agents an
 1. Both documented creation methods, the wizard at developers.reddit.com/new (React template) and `npx devvit init`, need a Reddit sign-in in the browser ([quickstart](https://developers.reddit.com/docs/quickstart), [Devvit CLI](https://developers.reddit.com/docs/guides/tools/devvit_cli)). The owner runs the creation in a scratch directory **outside** the workspace, because `devvit init` inside an existing Devvit project initialises that project, and the workspace root is one (B9, D3). If the CLI asks for authentication, the owner runs `devvit login` in their own terminal (Req 1.7).
 2. The agent moves the generated files into `patchwork/` without overwriting PLAN.md, AGENTS.md or `.kiro/`, and merges useful guidance from the template's own AGENTS.md. No source code is copied from Foldline or `app/` (Req 1.3).
 3. The agent applies the template changes below, then runs `npm test` and `npm run build` on Node 24.18 or later (Req 1.4, Req 1.11).
+
+As built in step 3: on the owner's instruction ("do it yourself") the agent cloned the official template repository `reddit/devvit-template-react` (no sign-in needed) in a scratch directory outside the workspace and merged it into `patchwork/` with the app name `patchwork`. Registering the app still needs the owner's `devvit login` before the first playtest (design.md, Project creation).
 
 | Template file | Change | Requirement |
 |---|---|---|

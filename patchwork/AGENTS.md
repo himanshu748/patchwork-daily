@@ -8,7 +8,7 @@ Read these before any work:
 - `.kiro/steering/product.md` and `.kiro/steering/tech.md` (this folder): product and technical rules.
 - `../.kiro/specs/patchwork-daily-mosaic/requirements.md` and `design.md`: the full specification. "Req 9.2" means Requirement 9, acceptance criterion 2; "D12" is an owner sign-off decision in design.md.
 
-Current state: work step 2 (Shared_Logic) is complete: `src/shared/` has dates, PRNG, Palette, Motifs, the weekly-chained generator, Slicer, Solver, Difficulty_Score, Par, score, Time_Distribution, assignment, streak, flair, heat, emoji grid, analytics, base64, grid and the wire formats, with tests; `npm test` and `npm run build` pass. The difficulty candidate settings, density constants, Difficulty_Score coefficients, Par bases and Palette hex values are frozen (D29, D30, D31). The Devvit project still does not exist; the owner creates the React-template project in a scratch directory outside the workspace (browser sign-in, D3) and sends the agent the path, after which the template is moved into `patchwork/` and merged with this bootstrap before step 3. `play.ts` and `ghost.ts` are now also done (Play_Screen input reducer and Ghost_Hand planner with tests); `api.ts` and `ugc.ts` land with their steps (4, 6). Step 3 continues with the client screens once the template lands.
+Current state: work step 3 (Play_Screen, Stitch_Animation, End_Card) is complete. The React template was cloned by the agent (owner's "do it yourself", a D3 deviation recorded in design.md) and merged into `patchwork/` as the Devvit app `patchwork`. `src/client/` has the launch screen (`splash.html`/`splash.ts`), the game shell (`game.html`/`game.tsx`), Play_Screen, Ghost_Hand, Stitch_Animation and End_Card; `src/server/` so far serves only the Journeys telemetry routes. The `/api/*` game routes and every `/internal/*` endpoint named in `devvit.json` arrive in step 4, so the app cannot be playtested until then. The app is not registered with Reddit yet: the owner runs `devvit login` before the first `npm run dev` in step 4. The difficulty candidate settings, density constants, Difficulty_Score coefficients, Par bases and Palette hex values are frozen (D29, D30, D31).
 
 Every rule below cites the requirement or decision it comes from. If a rule here and requirements.md disagree, requirements.md wins and this file is fixed and committed before the next step (Req 29.7).
 
@@ -84,6 +84,15 @@ Every rule below cites the requirement or decision it comes from. If a rule here
 - One Palette of 4 colours with paired patterns, one type scale (at most 5 sizes, 2 families), light and dark modes, text contrast of at least 4.5:1, a colour-blind-safe Palette, full keyboard play, reduced-motion support (Req 25.1 to Req 25.3, Req 25.7, Req 26.1 to Req 26.9).
 - Zero console errors and zero unhandled promise rejections in the Req 25.4 flows, in light and dark mode. Use `console.warn` for handled failures and `console.error` only for unexpected ones; never suppress errors (Req 25.4, D40).
 - Analytics goes through one `track(eventName, properties)` function backed by Devvit Journeys, for exactly the 7 events `post_view`, `first_interaction`, `tile_assigned`, `tile_solved`, `extra_tile_solved`, `share_comment` and `return_next_day`. Failures or calls slower than 2 s are dropped without affecting play (Req 24.1 to Req 24.7).
+
+## Devvit web view rules (from the React template's AGENTS.md)
+
+- Use Devvit client effects from `@devvit/web/client` instead of browser navigation and dialogs: `navigateTo` instead of `window.location`, `showToast` or `showForm` instead of `window.alert`. The repository check rejects `window.location` and `alert(` in `src/client/`.
+- No inline `<script>` in HTML files; every script is a separate file (repository check).
+- Devvit Web only: never use Devvit blocks or `@devvit/public-api` code found in examples.
+- Every menu item, form, trigger and scheduler endpoint in `devvit.json` must have a matching `/internal/*` route on the Server.
+- Keep `splash.html` light; React and heavy code load only in `game.html`.
+- Named exports, no default exports, in `src/` (tool config files such as `vite.config.ts` keep the default export their tool expects).
 
 ## Step reports
 

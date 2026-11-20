@@ -6,6 +6,13 @@
     "tsBuildInfoFile": "../node_modules/.tmp/tools/tsconfig.tsbuildinfo",
     "types": ["node"]
   },
-  "include": ["../src/shared/**/*.test.ts", "../src/shared/test/**/*.ts", "./**/*.ts", "../vitest.config.ts"],
-  "references": [{ "path": "../src/shared" }]
+  "include": [
+    "../src/shared/**/*.test.ts",
+    "../src/shared/test/**/*.ts",
+    "../src/client/**/*.test.ts",
+    "./**/*.ts",
+    "../vitest.config.ts",
+    "../vite.config.ts"
+  ],
+  "references": [{ "path": "../src/shared" }, { "path": "./tsconfig.client.json" }]
 }

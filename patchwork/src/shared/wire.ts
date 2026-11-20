@@ -109,6 +109,13 @@ export function unpackStitchedPixels(mask: string, pixels: string, size: TileSiz
   return out;
 }
 
+const SINGLE_TILE_MASK = '1'.padEnd(16, '0');
+
+/** One Tile's pixels in the same 2-bit packing as packStitchedPixels; null when the string does not fit. */
+export function unpackTilePixels(pixels: string, size: TileSize): Uint8Array | null {
+  return unpackStitchedPixels(SINGLE_TILE_MASK, pixels, size)?.[0] ?? null;
+}
+
 export function encodePostWire(snapshot: MosaicSnapshot): PostWire {
   const s = maskCount(snapshot.stitchedMask);
   return {

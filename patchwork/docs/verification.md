@@ -3,6 +3,22 @@
 Measured values from test runs and manual checks, newest first. Every entry names the
 method and the date. The step report copies its numbers from here.
 
+## Step 3: Play_Screen, Stitch_Animation, End_Card (2026-11-20, date of the runs)
+
+Machine: macOS (darwin), Node v24.22.1, run from `patchwork/`.
+
+| What | Value | Method |
+|---|---|---|
+| `npm test` | 97 passed, 0 failed, 0 skipped; 18 files | `vitest --run` summary line, run 3 times in a row after the last change, all green. The 3 repository checks skipped in step 2 now run. |
+| `npm run build` | pass | `tsc --build` (0 errors), `vite build`, `tools/check-bundle.mjs`. |
+| Client JavaScript total, Req 27.3 | 85,732 bytes gzipped of 133,120 | `check-bundle.mjs`: gzip level 9 of every `.js` file in `dist/client` (`game.js` 75,029, `track.js` 10,121, `default.js` 582). |
+| Launch screen JavaScript, Req 27.3 | 10,703 bytes gzipped of 15,360 | same script: `default.js` (582) plus its static import `track.js` (10,121, the shared chunk with the Journeys client, tokens and the client-side Shared_Logic). |
+| 360 px layout, Tile_Size 7, Req 10.7, Req 26.7 | Cells 44×44 CSS px spanning x = 48 to 356 (308 px), first row level with the first row Clue (y = 136); page `scrollWidth` 360 = viewport width (no horizontal scroll) | `format.test.ts` (`playLayout(7, 360)`) and the built `game.html` in Chromium (Playwright) at 360×740, reading `getBoundingClientRect` of the Cells. |
+| Full flow in a browser, light and dark | Ghost_Hand plays and stops; a drag-solved Tile submits once; Stitch_Animation flies the Tile into the Mosaic; End_Card shows; "Help another tile" opens a new Tile; launch screen paints from `postData`. 0 console errors and 0 warnings after the favicon fix. | Built `dist/client` served by a scratch Node server outside the workspace that answered `/api/*` with Tiles from `generateMosaic`/`sliceToTiles` for 2026-11-21 and fixed End_Card values; deleted after the run. This is a layout and flow check only, not a playtest: the real Server routes come in step 4. |
+| Analytics isolation, Property 47 | `track` returns synchronously with no escaped rejection and no leftover timer when the Journeys client resolves, rejects, throws or never settles (100 generated cases) | `src/client/lib/track.test.ts` with the Journeys client module mocked. |
+
+Found and fixed during the step: the grid's 2 px border pushed the Cells 2 px off the Clues and the pointer maths (now an outline); the missing favicon caused one console error (now `<link rel="icon" href="data:,">`); Property 50's generator could produce an all-empty grid, which no real Tile is (Req 4.9), and failed on seed 1058802080 (now filtered).
+
 ## Step 2: Shared_Logic (2026-11-16, date of the run)
 
 Machine: macOS (darwin), Node v24.22.1, run from `patchwork/`.

@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Patchwork</title>
+    <link rel="icon" href="data:," />
+  </head>
+  <body>
+    <main class="launch">
+      <canvas id="mosaic" class="launch-canvas" role="img" aria-label="Today's mosaic"></canvas>
+      <div class="launch-text">
+        <p id="status" class="t-l t-bold"></p>
+        <p id="motif" class="t-s t-muted"></p>
+        <p id="invite" class="t-s" hidden></p>
+      </div>
+      <button id="play" class="button primary launch-play" type="button">Play</button>
+    </main>
+    <script type="module" src="./splash.ts"></script>
+  </body>
+</html>

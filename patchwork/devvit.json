@@ -1,0 +1,72 @@
+{
+  "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
+  "name": "patchwork",
+  "post": {
+    "dir": "dist/client",
+    "entrypoints": {
+      "default": { "entry": "splash.html", "inline": true, "height": "tall" },
+      "game": { "entry": "game.html" }
+    }
+  },
+  "server": { "dir": "dist/server", "entry": "index.cjs" },
+  "permissions": {
+    "redis": true,
+    "realtime": true,
+    "journeys": true,
+    "reddit": { "enable": true, "scope": "moderator", "asUser": ["SUBMIT_COMMENT"] }
+  },
+  "triggers": {
+    "onAppInstall": "/internal/triggers/on-app-install",
+    "onAppUpgrade": "/internal/triggers/on-app-upgrade"
+  },
+  "scheduler": {
+    "tasks": {
+      "daily-post": { "endpoint": "/internal/scheduler/daily-post", "cron": "0 0 * * *" },
+      "tick": { "endpoint": "/internal/scheduler/tick", "cron": "*/30 * * * * *" }
+    }
+  },
+  "menu": {
+    "items": [
+      {
+        "label": "Regenerate today's mosaic",
+        "description": "Replace today's Patchwork mosaic with a new variant",
+        "location": "subreddit",
+        "forUserType": "moderator",
+        "endpoint": "/internal/menu/regenerate"
+      },
+      {
+        "label": "Skip today's mosaic",
+        "description": "Use the next motif for today's Patchwork mosaic",
+        "location": "subreddit",
+        "forUserType": "moderator",
+        "endpoint": "/internal/menu/skip"
+      },
+      {
+        "label": "Review community mosaics",
+        "description": "Approve or reject pending Patchwork mosaics",
+        "location": "subreddit",
+        "forUserType": "moderator",
+        "endpoint": "/internal/menu/review"
+      }
+    ]
+  },
+  "forms": {
+    "regenerateConfirm": "/internal/form/regenerate",
+    "skipConfirm": "/internal/form/skip",
+    "reviewUgc": "/internal/form/review"
+  },
+  "settings": {
+    "subreddit": {
+      "startDate": {
+        "type": "string",
+        "label": "Start date (UTC, yyyy-mm-dd)",
+        "helpText": "Day 1 of Patchwork. Leave empty to use the install date.",
+        "validationEndpoint": "/internal/settings/validate-start-date"
+      }
+    }
+  },
+  "scripts": {
+    "dev": "vite build --watch",
+    "build": "vite build"
+  }
+}

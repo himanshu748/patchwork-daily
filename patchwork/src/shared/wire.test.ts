@@ -10,6 +10,7 @@ import {
   packStitchedPixels,
   postWireBytes,
   unpackStitchedPixels,
+  unpackTilePixels,
   utf8Length,
 } from './wire';
 import { PBT_RUNS, snapshotArb } from './test/arbitraries';
@@ -97,6 +98,23 @@ describe('wire', () => {
     ]) {
       expect(decodePostWire(bad)).toBeNull();
     }
+  });
+
+  it('unpacks one Tile packed like the stitched pixels', () => {
+    fc.assert(
+      fc.property(
+        fc.constantFrom(5 as const, 6 as const, 7 as const).chain((size) =>
+          fc.tuple(fc.constant(size), fc.uint8Array({ min: 0, max: 3, minLength: size * size, maxLength: size * size })),
+        ),
+        ([size, px]) => {
+          const { pixels } = packStitchedPixels([px, ...Array<null>(63).fill(null)], size);
+          expect(unpackTilePixels(pixels, size)).toEqual(px);
+          expect(unpackTilePixels(pixels, size === 7 ? 5 : 7)).toBeNull();
+        },
+      ),
+      { numRuns: PBT_RUNS },
+    );
+    expect(unpackTilePixels('not base64!', 5)).toBeNull();
   });
 
   it('counts UTF-8 bytes like TextEncoder', () => {
