@@ -3,6 +3,24 @@
 Measured values from test runs and manual checks, newest first. Every entry names the
 method and the date. The step report copies its numbers from here.
 
+## Step 4: Scheduler, Tile_Assigner, Validator, Leaderboard, Streak_Tracker and Flair_Manager (2026-11-25, date of the runs)
+
+Machine: macOS (darwin), Node v24.22.1, run from `patchwork/`.
+
+| What | Value | Method |
+|---|---|---|
+| `npm test` | 159 passed, 0 failed, 0 skipped; 30 files; 27.80 s | `vitest --run` summary line after the final change. |
+| `npm run build` | pass | `tsc --build` with 0 errors, `vite build`, `tools/check-bundle.mjs`. |
+| Client JavaScript total, Req 27.3 | 85,732 bytes gzipped of 133,120 | `check-bundle.mjs`: `game.js` 75,029, `track.js` 10,121, `default.js` 582. |
+| Launch screen JavaScript, Req 27.3 | 10,703 bytes gzipped of 15,360 | same script: `default.js` plus its static import `track.js`. |
+| Concurrent assignment, Req 28.5 | examples at 100 and 1,000 users pass; Property 20 passes 100 generated interleavings at 1 to 120 users | `src/server/core/assign.test.ts` with `fc.scheduler()` driving the instrumented Redis mock. |
+| Concurrent Stitches, Req 28.6 | repeated same-user submissions record exactly one Stitch; 2 to 100 concurrent users record the expected Solve_Count and one First_Stitcher | `src/server/core/stitch.test.ts` Properties 25 and 26. |
+| Redis failure handling, Req 9.12, Req 12.8, Req 27.9 | every generated single-command assignment failure retries within the documented residue; every generated Stitch failure is either not saved with state unchanged or saved once | `src/server/core/failures.test.ts` Property 30, 100 generated cases for assignment and 100 for Stitch. |
+| Generation switch failure, Req 22.3, Req 22.4 | a failure at any generated command index leaves generation 0 active, removes replacement Tiles and allows a clean retry | `src/server/core/generation.test.ts` Property 61, 100 generated cases. |
+| Validator, scoring, streak and flair properties | all pass in the same `vitest --run` | `validate.test.ts`, `stitch.test.ts`, `streak.test.ts`, `leaderboard.test.ts`, `flair.test.ts`. |
+
+Found and fixed during the step closeout: `@devvit/test` restores `vi.spyOn` mocks after every test, which silently disabled the Redis fault injector after the first test. The harness now monkey-patches Redis once and clears hooks after each test. Two property tests also reused player identities across generated cases; their users are now unique per case. The generation fault property now injects one failing command rather than a permanent outage, matching the retryable-failure requirement.
+
 ## Step 3: Play_Screen, Stitch_Animation, End_Card (2026-11-20, date of the runs)
 
 Machine: macOS (darwin), Node v24.22.1, run from `patchwork/`.

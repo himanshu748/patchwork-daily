@@ -6,8 +6,7 @@ import { createPrng } from '../prng';
 import type { MosaicSnapshot } from '../wire';
 import { maskCount, packStitchedPixels } from '../wire';
 
-/** Every generated property runs at least this many cases; a test may raise it, never lower it. */
-export const PBT_RUNS = 100;
+export { PBT_RUNS } from '../pbt';
 
 const ORD_MIN = dayOrdinal('2020-01-01' as DayKey);
 const ORD_MAX = dayOrdinal('2099-12-31' as DayKey);

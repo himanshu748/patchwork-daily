@@ -26,7 +26,9 @@ export type ErrorCode =
   | 'MOD_REQUIRED'
   | 'ALREADY_REVIEWED'
   | 'UGC_NOT_FOUND'
-  | 'MOSAIC_UNAVAILABLE';
+  | 'MOSAIC_UNAVAILABLE'
+  /** A Redis failure on a route with no failure code of its own (end card, flair, ghost-seen). */
+  | 'UNAVAILABLE';
 
 export type UgcCheck = 'square' | 'size' | 'palette';
 
