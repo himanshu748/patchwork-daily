@@ -3,7 +3,9 @@ import { context } from '@devvit/web/client';
 import type { AssignResponse, ClientResult, SubmitAccepted } from '../../shared/api';
 import { decodePostWire } from '../../shared/wire';
 import type { EndEntry, ExtraTile } from '../end/EndCard';
+import { CreditsView } from '../credits/CreditsView';
 import { EndCard } from '../end/EndCard';
+import { MosaicView } from '../mosaic/MosaicView';
 import { TEXT } from '../lib/messages';
 import { fromPostWire } from '../lib/mosaic-data';
 import { createSoundPlayer } from '../lib/sound';
@@ -18,7 +20,7 @@ export type Screen = 'loading' | 'play' | 'stitching' | 'end' | 'mosaic' | 'cred
 type View =
   | { readonly screen: 'loading' }
   | { readonly screen: 'play'; readonly session: PlaySession }
-  | { readonly screen: 'stitching' | 'end'; readonly entry: EndEntry }
+  | { readonly screen: 'stitching' | 'end' | 'mosaic' | 'credits'; readonly entry: EndEntry }
   | { readonly screen: 'error'; readonly text: string; readonly retry: boolean };
 
 const FIRST_INTERACTION_KEY = 'pw-first-interaction';
@@ -202,7 +204,19 @@ export function App(props: { readonly initialAssign: Promise<ClientResult<Assign
           onStitched={() => setView({ screen: 'end', entry })}
           onExtra={onExtra}
           onReassign={reassign}
+          onMosaic={() => setView({ screen: 'mosaic', entry })}
+          onCredits={() => setView({ screen: 'credits', entry })}
         />
+      );
+    }
+    case 'mosaic':
+    case 'credits': {
+      const entry = view.entry;
+      const back = (): void => setView({ screen: 'end', entry });
+      return view.screen === 'mosaic' ? (
+        <MosaicView initial={post} onBack={back} onCredits={() => setView({ screen: 'credits', entry })} />
+      ) : (
+        <CreditsView initial={post} onBack={back} />
       );
     }
   }

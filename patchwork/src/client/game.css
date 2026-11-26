@@ -250,3 +250,99 @@
   height: 24px;
   accent-color: var(--colour-ink);
 }
+
+
+/* Mosaic_View and Credits_View */
+.mosaic-page,
+.credits-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 100vh;
+  padding: var(--space-4) var(--space-3) var(--space-6);
+}
+
+.screen-head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  max-width: 420px;
+  text-align: left;
+}
+.screen-head h1,
+.screen-head p {
+  margin: 0;
+}
+
+.mosaic-canvas {
+  display: block;
+  width: min(100%, 360px);
+  aspect-ratio: 1;
+  border-radius: var(--radius);
+  background: var(--colour-placeholder);
+}
+
+.heat-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 100%;
+  max-width: 420px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.heat-chip {
+  min-width: 52px;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--colour-grid-line);
+  text-align: center;
+}
+.heat-1 { background: var(--colour-empty-cell); }
+.heat-2 { background: repeating-linear-gradient(45deg, var(--colour-placeholder) 0 4px, var(--colour-empty-cell) 4px 8px); }
+.heat-3 { background: repeating-linear-gradient(90deg, var(--colour-placeholder) 0 3px, var(--colour-empty-cell) 3px 7px); }
+.heat-4 { background: var(--colour-grid-line); color: var(--colour-paper); }
+
+.center-inline {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.credits-section {
+  width: 100%;
+  max-width: 420px;
+}
+.credits-section h2 {
+  margin: var(--space-3) 0 var(--space-2);
+}
+.credits-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.credits-row {
+  display: grid;
+  grid-template-columns: 72px 1fr auto;
+  gap: var(--space-2);
+  align-items: center;
+  min-height: 32px;
+  padding: 0 var(--space-1);
+  border-bottom: 1px solid var(--colour-grid-line);
+  text-align: left;
+}
+.firsts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 var(--space-3);
+}
+.firsts .credits-row {
+  grid-template-columns: 58px 1fr;
+}

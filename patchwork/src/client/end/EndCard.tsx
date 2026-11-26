@@ -66,8 +66,10 @@ export function EndCard(props: {
   readonly onStitched: () => void;
   readonly onExtra: (tile: ExtraTile) => void;
   readonly onReassign: () => void;
+  readonly onMosaic: () => void;
+  readonly onCredits: () => void;
 }) {
-  const { entry, post, sound, onStitched, onExtra, onReassign } = props;
+  const { entry, post, sound, onStitched, onExtra, onReassign, onMosaic, onCredits } = props;
   const mode = useColourMode();
   const reducedMotion = useReducedMotion();
   const canvas = useRef<HTMLCanvasElement | null>(null);
@@ -251,6 +253,14 @@ export function EndCard(props: {
           </section>
 
           <div className="end-actions">
+            <button type="button" className="button" onClick={onMosaic}>
+              View mosaic
+            </button>
+            {data?.complete && (
+              <button type="button" className="button" onClick={onCredits}>
+                Credits
+              </button>
+            )}
             <button type="button" className="button primary" disabled={extraPending} onClick={() => void helpAnother()}>
               Help another tile
             </button>

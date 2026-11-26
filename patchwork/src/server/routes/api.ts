@@ -5,6 +5,7 @@ import { context } from '@devvit/web/server';
 import type {
   ApiError,
   AssignResponse,
+  CreditsResponse,
   EndCardResponse,
   ErrorCode,
   ExtraResponse,
@@ -17,6 +18,7 @@ import type { DayKey } from '../../shared/daykey';
 import type { MosaicSnapshot } from '../../shared/wire';
 import { assignExtra, assignForOpen } from '../core/assign';
 import { resolvePostDay } from '../core/day';
+import { readCredits } from '../core/credits';
 import { readEndCard } from '../core/endcard';
 import { setFlairOptIn } from '../core/flair';
 import { K } from '../core/keys';
@@ -183,6 +185,20 @@ apiRoutes.get('/mosaic', async (c) => {
     return ok<MosaicSnapshot>(c, await cachedSnapshot(d));
   } catch (error) {
     return logged(c, 'mosaic', 'MOSAIC_UNAVAILABLE', d, error);
+  }
+});
+
+
+apiRoutes.get('/credits', async (c) => {
+  let d: DayKey | null = null;
+  try {
+    d = await resolvePostDay(context.postId);
+    if (!d) return fail(c, 'NOT_A_PATCHWORK_POST', 'post has no Day_Key');
+    const res = await readCredits(d);
+    if (res.status === 'not-complete') return fail(c, 'NOT_COMPLETE', 'mosaic is not complete');
+    return ok<CreditsResponse>(c, res.credits);
+  } catch (error) {
+    return logged(c, 'credits', 'CREDITS_FAILED', d, error);
   }
 });
 

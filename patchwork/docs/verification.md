@@ -3,6 +3,22 @@
 Measured values from test runs and manual checks, newest first. Every entry names the
 method and the date. The step report copies its numbers from here.
 
+## Step 5: Mosaic_View, Credits_View and completed state (2026-11-26, date of the runs)
+
+Machine: macOS (darwin), Node v24.22.1, run from `patchwork/`.
+
+| What | Value | Method |
+|---|---|---|
+| `npm test` | 162 passed, 0 failed, 0 skipped; 31 files; 25.52 s | `vitest --run` summary line after the final change. |
+| `npm run build` | pass | `tsc --build` with 0 errors, `vite build`, `tools/check-bundle.mjs`. |
+| Client JavaScript total, Req 27.3 | 87,548 bytes gzipped of 133,120 | `check-bundle.mjs`: `game.js` 76,385, `track.js` 10,583, `default.js` 580. |
+| Launch screen JavaScript, Req 27.3 | 11,163 bytes gzipped of 15,360 | same script: `default.js` plus its static import `track.js`. |
+| Credits, Property 29 | 100 generated complete-mosaic cases pass | `src/server/core/credits.test.ts`: exact 64 First_Stitcher rows, at most 10 helpers in score order, unavailable users as null and expired helper data. |
+| Live snapshot ordering, Property 54 | pass in the same `vitest --run` | `src/shared/wire.test.ts`; `src/client/lib/live.ts` calls the same `isNewerSnapshot` rule. |
+| Devvit playtest startup | client and server rebuilds pass; playtest stops before connecting because the app does not exist yet | `npm run dev` output: `Server rebuild complete`, `Client rebuild complete`, then `Your app doesn't exist yet - you'll need to run 'npx devvit init' before you can playtest your app.` |
+
+Found and fixed during the step: Devvit Redis rejects `limit` on a rank-ordered `zRange`; top helpers now read ranks 0 to 9 with `reverse: true` and no `limit`. Realtime messages of a different generation are not merged into stale metadata, so a regeneration falls back to the next full snapshot fetch.
+
 ## Step 4: Scheduler, Tile_Assigner, Validator, Leaderboard, Streak_Tracker and Flair_Manager (2026-11-25, date of the runs)
 
 Machine: macOS (darwin), Node v24.22.1, run from `patchwork/`.

@@ -21,6 +21,7 @@ export const K = {
   userDays: (u: string): string => `pw:u:${u}:days`,
   dirty: 'pw:dirty',
   rt: (d: DayKey, w: number): string => `pw:rt:${d}:${w}`,
+  ugc: 'pw:ugc',
   ugcPending: 'pw:ugc:pending',
   /** Cache-helper keys (F31); the helper namespaces them itself. */
   cacheSnapshot: (d: DayKey): string => `pw-snap-${d}`,

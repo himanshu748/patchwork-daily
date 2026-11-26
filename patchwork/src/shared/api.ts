@@ -141,6 +141,13 @@ export type EndCardResponse = {
   readonly voteOpen: boolean;
 };
 
+export type CreditsResponse = {
+  readonly firstStitchers: readonly { readonly tile: number; readonly name: string | null }[];
+  readonly topHelpers: readonly { readonly rank: number; readonly name: string | null; readonly helpCount: number }[];
+  readonly helpersExpired: boolean;
+  readonly creator: { readonly name: string | null } | null;
+};
+
 export type ShareRequest = { readonly nonce: string };
 export type ShareResponse = { readonly commentId: string };
 export type FlairRequest = { readonly optIn: boolean };
