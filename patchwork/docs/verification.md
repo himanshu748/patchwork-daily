@@ -3,6 +3,24 @@
 Measured values from test runs and manual checks, newest first. Every entry names the
 method and the date. The step report copies its numbers from here.
 
+## Repository audit (2026-11-28)
+
+Scope: application source at `737963ee261f17f4ebd0a4ee89b4fe4f2d28da1e`.
+Linux, Node v24.22.3, with both commands run from `patchwork/`.
+
+| What | Observed result |
+| --- | --- |
+| `npm test` | 162 tests passed in 31 files. No failures or skips. |
+| `npm run build` | Passed TypeScript, Vite and bundle checks. |
+| Client JavaScript | 87,548 bytes gzipped of 133,120 allowed. |
+| Launch-screen JavaScript | 11,163 bytes gzipped of 15,360 allowed. |
+| Offline Chromium, guest practice | At 360 px, solved a 5×5 tile by touch. At 1440 px, solved it with the keyboard. Both showed the sign-in prompt. Neither sent a submission request or logged a client error. |
+
+The browser loaded the built game from a local test server with a fixed
+assignment response. This checks the built client, layout and guest
+interaction. An owner-authorized native Reddit playtest, judge-accessible
+post and video are still pending.
+
 ## Step 5: Mosaic_View, Credits_View and completed state (2026-11-26, date of the runs)
 
 Machine: macOS (darwin), Node v24.22.1, run from `patchwork/`.
