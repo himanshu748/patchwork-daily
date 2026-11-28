@@ -28,6 +28,7 @@ export type PlayAction =
   | { readonly type: 'longPress'; readonly cell: number }
   | { readonly type: 'dragTo'; readonly cell: number }
   | { readonly type: 'release' }
+  | { readonly type: 'cancelPress' }
   | { readonly type: 'key'; readonly key: 'Space' | 'KeyX' | 'Backspace' | 'Delete'; readonly cell: number }
   | { readonly type: 'markMode'; readonly on: boolean }
   | { readonly type: 'reset'; readonly cells: Uint8Array };
@@ -130,6 +131,9 @@ export function playReducer(state: PlayState, action: PlayAction, clues?: Clues)
       }
       return finish({ ...state, cells, drag: { ...d, axis } }, clues);
     }
+    case 'cancelPress':
+      // A canceled pointer never completes a pending tap. Applied drag edits keep their result.
+      return state.drag === null ? state : { ...state, drag: null };
     case 'release': {
       const d = state.drag;
       if (d === null) return state;
