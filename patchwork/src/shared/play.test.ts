@@ -247,6 +247,24 @@ describe('play', () => {
     expect(m.cells[0]).toBe(0);
   });
 
+  it('cancels a pending tap without filling the final square or submitting', () => {
+    const solution = new Uint8Array(25);
+    solution[0] = 1;
+    const clues = deriveClues(solution, 5);
+
+    const pressed = playReducer(initialPlayState(5), { type: 'press', cell: 0 }, clues);
+    const canceled = playReducer(pressed, { type: 'cancelPress' }, clues);
+    expect(canceled.drag).toBeNull();
+    expect(canceled.cells[0]).toBe(0);
+    expect(canceled.submit).toBe(false);
+    expect(canceled.locked).toBe(false);
+
+    const nextPress = playReducer(canceled, { type: 'press', cell: 0 }, clues);
+    const released = playReducer(nextPress, { type: 'release' }, clues);
+    expect(released.cells[0]).toBe(1);
+    expect(released.submit).toBe(true);
+  });
+
   it('ignores Cell input while locked and unlocks on reset', () => {
     const grid = new Uint8Array(25);
     grid[0] = 1;
