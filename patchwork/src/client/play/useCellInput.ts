@@ -80,7 +80,7 @@ export function useCellInput(
       if (!p || p.pointerId !== e.pointerId) return;
       clearTimeout(p.timer);
       press.current = null;
-      dispatch({ type: 'release' });
+      dispatch({ type: e.type === 'pointercancel' ? 'cancelPress' : 'release' });
       setFocusCell(p.start);
     },
     [dispatch],
