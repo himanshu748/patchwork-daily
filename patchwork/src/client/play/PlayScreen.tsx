@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useReducer, useRef, useState } from 'react';
 import { showLoginPrompt } from '@devvit/web/client';
 import type { SubmitAccepted, SubmitResponse, TileWire } from '../../shared/api';
 import type { Clues } from '../../shared/clues';
@@ -58,6 +58,7 @@ export function PlayScreen(props: {
   const { session, soundOn, onToggleSound, onAccepted, onNewTile } = props;
   const { tile } = session;
   const size = tile.size;
+  const clueId = useId();
   const clues = useMemo<Clues>(() => ({ size, rows: tile.rowClues, cols: tile.colClues }), [size, tile]);
   const [state, send] = useReducer(
     (s: PlayState, m: Msg) => (m.check ? playReducer(s, m.action, clues) : playReducer(s, m.action)),
@@ -180,6 +181,7 @@ export function PlayScreen(props: {
         <div className="col-clues" style={{ gridTemplateColumns: `repeat(${size}, ${layout.cell}px)` }}>
           {clues.cols.map((clue, c) => (
             <div key={c} className={lineMatches(column(cells, size, c), clue) ? 'clue col done' : 'clue col'}>
+              <span id={`${clueId}-col-${c}`} hidden>Column clue: {clue.join(', ') || '0'}</span>
               {(clue.length ? clue : [0]).map((v, i) => (
                 <span key={i} className="t-xs">
                   {v}
@@ -191,6 +193,7 @@ export function PlayScreen(props: {
         <div className="row-clues" style={{ gridTemplateRows: `repeat(${size}, ${layout.cell}px)` }}>
           {clues.rows.map((clue, r) => (
             <div key={r} className={lineMatches(row(cells, size, r), clue) ? 'clue row done' : 'clue row'}>
+              <span id={`${clueId}-row-${r}`} hidden>Row clue: {clue.join(', ') || '0'}</span>
               {(clue.length ? clue : [0]).map((v, i) => (
                 <span key={i} className="t-xs">
                   {v}
@@ -225,6 +228,7 @@ export function PlayScreen(props: {
                       tabIndex={i === focusCell ? 0 : -1}
                       className={v === 1 ? 'cell filled' : v === 2 ? 'cell marked' : 'cell'}
                       aria-label={`Row ${r + 1}, column ${c + 1}, ${CELL_LABEL[v]}`}
+                      aria-describedby={`${clueId}-row-${r} ${clueId}-col-${c}`}
                     >
                       {v === 2 ? '✕' : ''}
                     </button>
