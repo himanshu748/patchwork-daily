@@ -80,8 +80,13 @@ export function useCellInput(
       if (!p || p.pointerId !== e.pointerId) return;
       clearTimeout(p.timer);
       press.current = null;
-      dispatch({ type: e.type === 'pointercancel' ? 'cancelPress' : 'release' });
+      if (e.type === 'pointercancel') {
+        dispatch({ type: 'cancelPress' });
+        return;
+      }
+      dispatch({ type: 'release' });
       setFocusCell(p.start);
+      gridRef.current?.querySelector<HTMLElement>(`[data-cell="${p.start}"]`)?.focus({ preventScroll: true });
     },
     [dispatch],
   );
